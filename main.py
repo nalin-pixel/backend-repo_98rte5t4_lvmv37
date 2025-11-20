@@ -1,8 +1,13 @@
 import os
-from fastapi import FastAPI
+from datetime import datetime, timezone
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 
-app = FastAPI()
+from database import create_document
+
+app = FastAPI(title="NanoSlim Funnel API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,13 +17,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class LeadIn(BaseModel):
+    name: Optional[str] = None
+    email: EmailStr
+
 @app.get("/")
 def read_root():
-    return {"message": "Hello from FastAPI Backend!"}
+    return {"message": "NanoSlim Funnel Backend attivo"}
 
-@app.get("/api/hello")
-def hello():
-    return {"message": "Hello from the backend API!"}
+@app.post("/api/leads")
+def create_lead(lead: LeadIn):
+    try:
+        # Insert lead into MongoDB using helper (auto timestamps)
+        inserted_id = create_document("lead", lead.model_dump())
+        return {"status": "ok", "id": inserted_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/test")
 def test_database():
